@@ -1,38 +1,83 @@
 .App {
   text-align: center;
 }
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.chat {
+  height: 80%;
+  width: 300px;
+  display: inline-block;
+  overflow: hidden scroll;
+  padding: 10px;
+  background-color: #fcfcfc;
+  border-radius: 5px;
 }
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+form {
+  width: 300px;
+  height: 38px;
 }
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
+input {
+  padding: 0px 15px;
+  font-size: 16px;
+  /* width: 300px; */
+  outline: none;
+  border: none;
+  background-color: rgb(231, 231, 231);
+  border-radius: 30px;
+  height: 100%;
+}
+button {
+  padding: 0px 15px;
+  background: none;
+  border: none;
+  height: 100%;
+  position: relative;
+  padding-top: 12px;
+  margin-left: 5px;
+}
+button > svg {
+  color: rgb(92, 92, 255);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.message {
+  padding: 10px 20px;
+  border-radius: 100px;
   color: white;
+  text-align: left;
+  max-width: 70%;
+  overflow-wrap: break-word;
+    
 }
-
-.App-link {
-  color: #61dafb;
+.wrap-message {
+  margin-top: 3px;
+  display: flex;
 }
-
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.chat-header{
+  background-color: cadetblue;
+  padding: 8px;
+  justify-content: space-between;
+  display: flex;
+  align-items: center;
+}
+.chat-info{
+  display: flex;
+  align-items: center;
+}
+.chat-info > p{
+  margin: 0 auto;
+}
+svg {
+    cursor: pointer;
+}
+.video {
+  display: flex;
+  justify-content: space-between;
+}
+.css-et1ao3-MuiTypography-root {
+  font-weight: 600 !important;
+}
+.title-user-item{
+  font-weight: bold;
+  margin-left: 5px !important;
 }

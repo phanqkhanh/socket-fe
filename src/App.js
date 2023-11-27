@@ -1,24 +1,23 @@
-import logo from './logo.svg';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import './App.css';
+import Context, { AppContext } from './contexts/context';
+import Home from './pages/Home';
+import Login from './pages/Login';
+import { Alert } from '@mui/material';
+import { useContext } from 'react';
 
 function App() {
+  const { showAlert } = useContext(AppContext);
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <>
+      <BrowserRouter>
+        <Routes>
+          <Route index path="/" element={<Home />} />
+          <Route path="login" element={<Login />} />
+        </Routes>
+      </BrowserRouter>
+      <Alert variant="filled" style={{ right: showAlert.isShow ? '20px' : '-300px' }} severity={showAlert.status || 'error'} className='alert'>{showAlert.message}</Alert>
+    </>
   );
 }
 
