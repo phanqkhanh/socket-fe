@@ -3,18 +3,23 @@ import React, { useContext, useEffect, useState } from 'react'
 import { axiosInstance } from '../configs/configUrl';
 import { AppContext } from '../contexts/context';
 import { io } from 'socket.io-client';
+import { getFullNameUser } from '../utils';
+import { API_URL } from '../configs/constant';
 
 function ListUserOnline() {
-    const { handleShowAlert, socketRef, user, socket, listUserOnline, setListUserOnline, setUserActive } = useContext(AppContext);
+    const { handleShowAlert, socketRef, user, listUserOnline, setListUserOnline, userOnlineSelect, setUserOnlineSelect, setChatActive } = useContext(AppContext);
     useEffect(() => {
         const authSocket = {
             _id: user._id,
             firstName: user.firstName,
             avatarUrl: user.avatarUrl,
         }
-        socketRef.current = io("http://localhost:8080", {
+        socketRef.current = io(API_URL, {
             auth: { user: authSocket },
         });
+        // socketRef.current.on("connect", () => {
+        //     console.log(socketRef.current);
+        // });
 
         socketRef.current.on("new-user-online", (data) => {
             setListUserOnline((prevState) => ([...prevState, data]))
@@ -38,15 +43,56 @@ function ListUserOnline() {
         }
     }, [])
 
+    useEffect(() => {
+        if (userOnlineSelect) {
+            const userId = userOnlineSelect._id
+            axiosInstance.get(`/chat/${userId}`)
+                .then((response) => {
+                    if (response.data.data) {
+                        const chat = response.data.data
+                        const userReceive = chat.users.find(item => item._id !== user._id)
+                        const data = {
+                            _id: chat._id,
+                            avatarUrl: userReceive.avatarUrl,
+                            name: getFullNameUser(userReceive),
+                            to: userReceive._id
+                        }
+                        setChatActive(data)
+                    } else {
+                        const data = {
+                            _id: null,
+                            avatarUrl: userOnlineSelect.avatarUrl,
+                            name: getFullNameUser(userOnlineSelect),
+                            to: userOnlineSelect._id
+                        }
+                        setChatActive(data)
+                    }
+                }).catch((err) => {
+                    const msg = err.response?.data?.message || err.message || 'Lỗi'
+                    handleShowAlert('error', msg)
+                })
+        }
+    }, [userOnlineSelect])
+
     return (
-        <div style={{ position: 'absolute', left: '50px' }}>
+        <div style={{ position: 'absolute', right: '50px' }}>
             <h3>Có {listUserOnline.length} người dùng đang online</h3>
             <List dense sx={{ width: '100%', maxWidth: 360 }}>
                 {listUserOnline.map((value) => {
                     return (
                         <ListItem
-                            key={value}
-                            onClick={() => setUserActive(value)}
+                            key={value._id}
+                            onClick={() => {
+                                // const data = {
+                                //     chatId: null,
+                                //     avatarUrl: value.avatarUrl,
+                                //     name: value.name,
+                                //     userSelect: value,
+                                //     to: value._id,
+                                // }
+                                // setChatActive(data)
+                                setUserOnlineSelect(value)
+                            }}
                         >
                             <ListItemButton>
                                 <ListItemAvatar>
@@ -55,7 +101,7 @@ function ListUserOnline() {
                                         src={value.avatarUrl}
                                     />
                                 </ListItemAvatar>
-                                <ListItemText className='title-user-item' primary={value.firstName} />
+                                <ListItemText className='title-user-item' primary={getFullNameUser(value)} />
                             </ListItemButton>
                         </ListItem>
                     );

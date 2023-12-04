@@ -22,9 +22,8 @@ function Login() {
             email: value.email,
             password: value.password
         }
-        axiosInstance.post('/user/sign-in', data)
+        axiosInstance.post('/auth/sign-in', data)
             .then((response) => {
-                console.log(response)
                 if (response.data.statusCode == 200) {
                     const accessToken = response.data.data.accessToken
                     const idToken = response.data.data.idToken

@@ -2,13 +2,14 @@
   text-align: center;
 }
 .chat {
-  height: 80%;
+  height: 300px;
   width: 300px;
   display: inline-block;
-  overflow: hidden scroll;
   padding: 10px;
   background-color: #fcfcfc;
   border-radius: 5px;
+  position: relative;
+  padding-bottom: 15px;
 }
 form {
   width: 300px;
@@ -41,8 +42,8 @@ button > svg {
   transform: translate(-50%, -50%);
 }
 .message {
-  padding: 10px 20px;
-  border-radius: 100px;
+  padding: 6px 10px;
+  border-radius: 20px;
   color: white;
   text-align: left;
   max-width: 70%;
@@ -54,11 +55,14 @@ button > svg {
   display: flex;
 }
 .chat-header{
-  background-color: cadetblue;
+  background-color: rgb(49, 126, 129);
   padding: 8px;
   justify-content: space-between;
   display: flex;
   align-items: center;
+}
+.icon-chat-header {
+  padding-right: 10px;
 }
 .chat-info{
   display: flex;
@@ -79,5 +83,95 @@ svg {
 }
 .title-user-item{
   font-weight: bold;
-  margin-left: 5px !important;
+  /* margin-left: 5px !important; */
+  margin-bottom: 0 !important;
+  white-space: nowrap;      /* Ngăn ngừa xuống dòng */
+  overflow: hidden;         /* Ẩn phần vượt quá chiều ngang */
+  text-overflow: ellipsis;  /* Hiển thị dấu "..." */
+  max-width: 100%; 
+}
+.latest-message{
+  font-size: 12px;
+  margin: 0;
+  color: #555555;
+  /* margin-left: 5px; */
+  white-space: nowrap;      /* Ngăn ngừa xuống dòng */
+  overflow: hidden;         /* Ẩn phần vượt quá chiều ngang */
+  text-overflow: ellipsis;  /* Hiển thị dấu "..." */
+  max-width: 100%; 
+}
+.item-chat {
+  background-color: #e2e2e2;
+  box-shadow: 3px 0px 6px 2px #c9c9c9;
+  cursor: pointer;
+  margin-bottom: 5px;
+  position: relative;
+}
+.item-chat:hover {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+.css-178cqt3-MuiButtonBase-root-MuiListItemButton-root:hover {
+  background: none !important;
+}
+.icon-seen-chat{
+  width: 10px;
+  position: absolute;
+  height: 10px;
+  background-color: #6772ff;
+  top: 50%;
+  transform: translateY(-50%);
+  right: 10px;
+  border-radius: 100px;
+}
+.icon-online{
+  width: 13px;
+  position: absolute;
+  height: 13px;
+  background-color: #31A24C;
+  right: 15px;
+  bottom: 2px;
+  border-radius: 100px;
+}
+
+.wrap-dialog-call {
+  width: 300px;
+  height: 200px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px 0;
+}
+.icon-dialog-call{
+  background-color: aqua;
+    padding: 5px;
+    border-radius: 1000px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-50deg);
+  }
+}
+
+.accept-call-icon {
+  /* 2s là thời gian một vòng, bạn có thể điều chỉnh theo ý muốn */
+  animation: rotate infinite 1s linear;
+}
+
+.video-call-list{
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.video-call-item{
+  width: 300px;
 }

@@ -1,135 +1,222 @@
-import Peer from 'peerjs';
 import React, { useContext, useEffect, useRef, useState } from 'react'
 import { AppContext } from '../contexts/context';
 import { IoCall } from 'react-icons/io5';
 import { MdOutlineMissedVideoCall, MdSend } from 'react-icons/md';
 import { Avatar, ListItemText } from '@mui/material';
-
-const peer = new Peer();
+import { axiosInstance } from '../configs/configUrl';
+import { FaVideo } from "react-icons/fa6";
+import Typing from './Typing';
+import '../css/chat.css';
 
 function Chat() {
-    const { localVideoRef, remoteVideoRef, user, socketRef, userActive } = useContext(AppContext);
-
+    const { localVideoRef, remoteVideoRef, user, socketRef, chatActive, handleShowAlert,
+        setChatActive, setListChat, listChat, listChatRef, setCall, call
+    } = useContext(AppContext);
     const [value, setValue] = useState('')
     const [messages, setMessages] = useState([])
-    const messagesEndRef = useRef(null)
+    const [showTyping, setShowTyping] = useState(false)
+    const [isFetchingOldMessage, setIsFetchingOldMessage] = useState(false)
+    const typingTimeoutRef = useRef(null);
+    const chatContainerRef = useRef(null)
+    const nextMessageRef = useRef(null)
 
+    const scrollMessage = (message) => {
+        // Lấy chiều cao của container tin nhắn
+        const chatContainerHeight = chatContainerRef.current?.scrollHeight;
+
+        // Đặt vị trí cuộn sao cho bottom của container là bottom của nội dung
+        if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerHeight;
+        }
+    }
     const handleSubmit = (e) => {
         e.preventDefault();
-        const dataSend = {
-            content: value,
-            to: userActive._id
-        }
-        socketRef.current.emit('send-message', dataSend, (error, successMessage) => {
-            // Xử lý phản hồi từ server ở đây
-            if (error) {
-                console.error(error);
-            } else {
-                // Xử lý thành công
-                // console.log(successMessage);
+        setIsFetchingOldMessage(false)
+        if (chatActive.to) {
+            const dataSend = {
+                content: value,
+                to: chatActive.to,
+                chatId: chatActive._id
             }
-        })
-        setMessages((prevState) => [...prevState, { content: value, userId: user._id }])
-        setValue('')
+            const newListMessage = [...messages]
+
+            socketRef.current.emit('send-message', dataSend, (error, responseSuccess) => {
+                // Xử lý phản hồi từ server ở đây
+                if (error) {
+                    handleShowAlert('error', error.toString());
+                    const length = messages.length
+                    newListMessage.push({ ...messages[length - 1], isError: true })
+                    setMessages(newListMessage)
+                } else {
+                    // Xử lý thành công
+                    //cập nhật lại latestMessage của list chat
+                    const { message, chat } = responseSuccess
+                    const newListChat = listChat.filter(item => item._id !== chat._id)
+                    newListChat.unshift({ ...chat, latestMessage: message })
+                    setListChat(newListChat)
+                    const length = messages.length
+                    newListMessage.push(message)
+                    setMessages(newListMessage)
+                }
+            })
+            setMessages((prevState) => [...prevState, { _id: Date.now(), content: value, sender: user._id, isSending: true }])
+            setValue('')
+        }
+    }
+    const handleOnChange = (e) => {
+        const data = {
+            to: chatActive.to
+        }
+        if (!typingTimeoutRef.current) {
+            socketRef.current?.emit('typing', data)
+        }
+        clearTimeout(typingTimeoutRef.current);
+        setValue(e.target.value)
+
+        // Đặt hẹn giờ để gửi sự kiện 'stop-typing' sau 2 giây
+        typingTimeoutRef.current = setTimeout(() => {
+            socketRef.current?.emit('stop-typing', data);
+            typingTimeoutRef.current = null;
+        }, 2000);
     }
     const isMyMessage = (id) => {
         return id == user._id
     }
 
-    const openStream = (openVideo = false) => {
-        const config = { audio: false, video: openVideo };
-        return navigator.mediaDevices.getUserMedia(config)
-    }
-    const playStream = (videoRef, stream) => {
-        try {
-            videoRef.current.srcObject = stream
-            videoRef.current?.play()
-        } catch (error) {
-            console.log(error);
-        }
-
-    }
-    const onCall = (isVideoCall = false) => {
-        const id = '' //id peer của người muốn gọi
-        openStream(isVideoCall).then(stream => {
-            playStream(localVideoRef, stream)
-            const call = peer.call(id, stream)
-            call.on('stream', remoteStream => playStream(remoteVideoRef, remoteStream))
-        }).catch(err => console)
-
-    }
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView()
+        nextMessageRef.current = messages[0]
     }, [messages])
 
     useEffect(() => {
-        socketRef.current.on("receive-message", (data) => {
-            // console.log(data);
-            setMessages((prevState) => [...prevState, { content: data.content, userId: data.from }])
-        })
-        socketRef.current.on("send-message-success", (data) => {
-            // console.log(data);
-        })
-    }, [])
+        if (!isFetchingOldMessage) {
+            scrollMessage()
+        }
+    }, [messages, isFetchingOldMessage]);
 
+    const chatActiveRef = useRef(null)
     useEffect(() => {
-        setMessages([])
-        //call api get chat messages
-    }, [userActive])
+        socketRef.current?.on("receive-message", (data) => {
+            const { chat, message } = data
+            if (chat._id === chatActiveRef.current?._id) {
+                setMessages((prevState) => [...prevState, message])
+                axiosInstance.post('/chat/seen', {
+                    chatId: chat._id
+                }).then((response) => {
+                    // console.log(response.data)
+                }).catch((error) => {
+                    const msg = error.response?.data?.message || error.message || 'Lỗi'
+                    handleShowAlert('error', msg)
+                })
 
-    useEffect(() => {
-        peer.on("open", (id) => {
-            const dataEmit = {
-                peerId: id,
-                userId: user._id
+                //cập nhật lại latestMessage của list chat
+                const latestMessage = { ...message, readBy: [...message.readBy, user._id] }
+                const newListChat = listChatRef.current.filter(item => item._id !== chat._id)
+                newListChat.unshift({ ...chat, latestMessage: latestMessage })
+                setListChat(newListChat)
+            } else {
+                //cập nhật lại latestMessage của list chat
+                const newListChat = listChatRef.current.filter(item => item._id !== chat._id)
+                newListChat.unshift({ ...chat, latestMessage: message })
+                setListChat(newListChat)
             }
-            socketRef.current.emit('peer-connect', dataEmit)
-        });
-
-        peer.on('call', call => {
-            openStream(true).then(stream => {
-                call.answer(stream)
-                playStream(localVideoRef, stream)
-                call.on('stream', remoteStream => playStream(remoteVideoRef, remoteStream))
-
-            }).catch(err => console)
+        })
+        socketRef.current?.on('typing', () => {
+            setShowTyping(true)
+        })
+        socketRef.current?.on('stop-typing', () => {
+            setShowTyping(false)
         })
     }, [])
+
+    //truyền vào chatId, có thể thêm next id
+    const fetchMessages = async (params) => {
+        const limit = 20
+        return axiosInstance.get('/chat/message', {
+            params: { ...params, limit: limit }
+        })
+    }
+    useEffect(() => {
+        chatActiveRef.current = chatActive
+        //call api get chat messages
+        if (chatActive?._id) {
+            //get messages
+            fetchMessages({ chatId: chatActive._id }).then(response => {
+                if (response.data.data) {
+                    const data = response.data.data?.reverse()
+                    setMessages(data)
+                }
+            }).catch(err => {
+                const msg = err.response?.data?.message || err.message || 'Lỗi'
+                handleShowAlert('error', msg)
+            })
+        }
+    }, [chatActive])
+
+    useEffect(() => {
+        const handleScroll = () => {
+            // Kiểm tra xem có đang scroll lên không
+            if (chatContainerRef.current?.scrollTop === 0) {
+                // Gọi API để lấy tin nhắn trước đó ở đây
+                const nextId = nextMessageRef.current?._id
+                setIsFetchingOldMessage(true)
+                fetchMessages({ chatId: chatActive._id, next: nextId }).then((response) => {
+                    if (response.data.data) {
+                        const data = response.data.data?.reverse()
+                        setMessages((prevState) => ([...data, ...prevState]))
+                    }
+                }).catch(err => {
+                    const msg = err.response?.data?.message || err.message || 'Lỗi'
+                    handleShowAlert('error', msg)
+                })
+            }
+        };
+        // Đăng ký sự kiện scroll
+        chatContainerRef.current?.addEventListener('scroll', handleScroll);
+
+        return () => {
+            // Hủy đăng ký sự kiện khi component unmount
+            chatContainerRef.current?.removeEventListener('scroll', handleScroll);
+        };
+    }, [chatContainerRef.current]);
 
     return (
-        <div style={{ width: '300px' }}>
-            {userActive &&
-                <div style={{ height: '80%' }}>
-                    <div className='chat' style={{ height: '100%', display: 'inline-block', overflowY: 'scroll', overflowX: 'hidden', padding: '10px' }}>
-                        <div className='chat-header'>
-                            <div className='chat-info'>
-                                <Avatar
-                                    alt={`avatar`}
-                                    src={userActive?.avatarUrl}
-                                />
-                                <p className='title-user-item' >{userActive?.firstName}</p>
-                            </div>
-                            <div className='icon'>
-                                <IoCall size={25} onClick={() => onCall(false)} />
-                                <MdOutlineMissedVideoCall size={25} onClick={() => onCall(true)} />
-                            </div>
+        <div>
+            {chatActive &&
+                <div style={{ backgroundColor: '#fcfcfc' }}>
+                    <div className='chat-header'>
+                        <div className='chat-info'>
+                            <Avatar
+                                alt={`avatar`}
+                                src={chatActive?.avatarUrl}
+                            />
+                            <p className='title-user-item' style={{ marginLeft: '10px', color: '#fff' }}>{chatActive?.name}</p>
                         </div>
-                        {messages.map((message, index) =>
-                            <>
-                                <div className='wrap-message' style={{ justifyContent: isMyMessage(message.userId) ? 'flex-end' : 'flex-start' }}>
-                                    <div style={{ justifyContent: isMyMessage(message.userId) ? 'flex-end' : 'flex-start', backgroundColor: isMyMessage(message.userId) ? 'rgb(0, 132, 255)' : '#303030' }} className='message' key={index}>{message.content}</div>
-                                </div>
-                            </>
-                        )}
-                        <div ref={messagesEndRef} />
+                        <div className='icon-chat-header'>
+                            <IoCall size={30} color='#fff' style={{ marginRight: '10px' }} onClick={() => setCall((prevState) => ({ ...prevState, isCall: true, video: false }))} />
+                            <FaVideo color='#fff' size={30} onClick={() => setCall((prevState) => ({ ...prevState, video: true, isCall: true }))} />
+                        </div>
                     </div>
-                    <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+                    <div ref={chatContainerRef} className='chat' style={{ overflowY: 'scroll', overflowX: 'hidden' }}>
+                        {messages.map((message, index) =>
+                            <div key={message?._id} className='wrap-message' style={{ justifyContent: isMyMessage(message.sender) ? 'flex-end' : 'flex-start' }}>
+                                <div style={{ justifyContent: isMyMessage(message.sender) ? 'flex-end' : 'flex-start', backgroundColor: isMyMessage(message.sender) ? 'rgb(0, 132, 255)' : '#303030' }} className='message' key={index}>{message.content}</div>
+                            </div>
+                        )}
+                        {
+                            isMyMessage(messages[messages.length - 1]?.sender) ?
+                                messages[messages.length - 1]?.isSending ?
+                                    <p className='sending'>Đang gửi...</p> :
+                                    <p className='sending'>Đã gửi</p>
+                                : null
+                        }
+                        {showTyping && <Typing />}
+                    </div>
+                    <div style={{ width: '100%', display: 'flex', justifyContent: 'center', paddingBottom: '10px' }}>
                         <form onSubmit={handleSubmit} style={{}}>
-                            <input type='text' value={value} onChange={(e) => setValue(e.target.value)} />
+                            <input type='text' value={value} onChange={handleOnChange} />
                             <button type='submit'><MdSend size={30} /></button>
                         </form>
                     </div>
-                    {/* <VideoCall /> */}
                 </div>}
         </div>
     )

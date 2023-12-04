@@ -9,7 +9,11 @@ export default function Context({ children }) {
     const [showAlert, setShowAlert] = useState({ isShow: false, status: 'error', message: '' })
     const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')) || null)
     const [listUserOnline, setListUserOnline] = useState([])
-    const [userActive, setUserActive] = useState(null)
+    const [userOnlineSelect, setUserOnlineSelect] = useState(null)
+    const [chatActive, setChatActive] = useState(null)
+    const [listChat, setListChat] = useState([])
+    const listChatRef = useRef(null)
+    const [call, setCall] = useState({ isCall: false, video: true, audio: true })
 
 
     const handleShowAlert = (status = 'error' | 'success', message = '') => {
@@ -30,8 +34,15 @@ export default function Context({ children }) {
                 socketRef,
                 setListUserOnline,
                 listUserOnline,
-                setUserActive,
-                userActive
+                setChatActive,
+                chatActive,
+                userOnlineSelect,
+                setUserOnlineSelect,
+                setListChat,
+                listChat,
+                listChatRef,
+                call,
+                setCall
             }}
         >
             {children}

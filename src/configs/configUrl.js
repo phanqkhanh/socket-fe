@@ -1,8 +1,19 @@
 import axios from 'axios';
+import { API_URL } from './constant';
 // import { tokenServices } from './tokenServices';
 
+let refreshSubscribers = [];
+const onAccessTokenFetched = (accessToken) => {
+  refreshSubscribers.forEach((callback) => callback(accessToken));
+  refreshSubscribers = [];
+};
+
+const addSubscriber = (callback) => {
+  refreshSubscribers.push(callback);
+};
+
 export const axiosInstance = axios.create({
-  baseURL: 'http://localhost:8080',
+  baseURL: API_URL,
   headers: {
     'x-api-key': 'V3D0uyF6n15yV2emTmNPF57T545ksjZr5e55ng5f',
   },
@@ -23,6 +34,8 @@ axiosInstance.interceptors.request.use(
   },
 );
 
+let isRefreshing = false;
+
 // Add a response interceptor
 axiosInstance.interceptors.response.use(
   function (response) {
@@ -36,44 +49,33 @@ axiosInstance.interceptors.response.use(
     // Do something with response error
 
     // refresh token
-    if (error.response.status === 401 && !originalConfig._retry) {
-      originalConfig._retry = true;
+    if (error.response?.status === 401) {
+      if (!isRefreshing) {
+        isRefreshing = true;
+        try {
+          const rs = await axiosInstance.post('/auth/refresh-token', {
+            refreshToken: localStorage.getItem('refreshToken'),
+          });
+          const { idToken } = rs.data;
+          localStorage.setItem('idToken', idToken);
+          onAccessTokenFetched(idToken);
+          originalConfig.headers.Authorization = idToken
 
-      try {
-        const rs = await axiosInstance.post('/user/refresh-token', {
-          refreshToken: tokenServices.getLocalRefreshToken(),
+          return axiosInstance(originalConfig);
+        } catch (_error) {
+          return Promise.reject(_error);
+        } finally {
+          isRefreshing = false;
+        }
+      } else {
+        return new Promise((resolve) => {
+          addSubscriber((idToken) => {
+            originalConfig.headers.Authorization = idToken
+            resolve(axiosInstance(originalConfig));
+          });
         });
-
-        const { idToken } = rs.data;
-        tokenServices.updateLocalAccessToken(idToken);
-
-        return axiosInstance(originalConfig);
-      } catch (_error) {
-        return Promise.reject(_error);
       }
     }
     return Promise.reject(error);
   },
 );
-export const tokenServices = {
-  getLocalAccessToken: () => {
-    let idToken = localStorage.getItem('idToken');
-    if (idToken) {
-      return JSON.parse(idToken);
-    }
-  },
-  getLocalRefreshToken: () => {
-    let refreshToken = localStorage.getItem('refreshToken');
-    if (refreshToken) {
-      return JSON.parse(refreshToken);
-    }
-  },
-  updateLocalAccessToken: (token) => {
-    let idToken = localStorage.getItem('idToken');
-    if (idToken) {
-      idToken = JSON.parse(idToken);
-      idToken = token;
-    }
-    localStorage.setItem('idToken', JSON.stringify(idToken));
-  },
-};
