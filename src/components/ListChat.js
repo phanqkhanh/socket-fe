@@ -81,7 +81,7 @@ function ListChat() {
     // console.log(listChat)
     return (
         <div style={{ position: 'absolute', left: '50px' }}>
-            <h3>{listChat.length === 0 ? 'Bạn chưa có cuộc trò chuyện nào' : 'Danh sách cuộc trò chuyện'}</h3>
+            <h3 style={{ margin: '0' }}>{listChat.length === 0 ? 'Bạn chưa có cuộc trò chuyện nào' : 'Danh sách cuộc trò chuyện'}</h3>
             <List dense sx={{ width: '100%', maxWidth: 360 }}>
                 {listChat.map((value, index) => {
                     return (

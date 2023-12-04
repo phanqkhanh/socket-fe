@@ -6,6 +6,7 @@ import ListUserOnline from '../components/ListUserOnline';
 import { AppContext } from '../contexts/context';
 import ListChat from '../components/ListChat';
 import VideoCall from '../components/VideoCall';
+import CreateGroup from '../components/CreateGroup';
 
 function Home() {
     const navigate = useNavigate()
@@ -31,9 +32,10 @@ function Home() {
                         <Button onClick={handleLogout} variant="text">Logout</Button>
                     </div>
 
+                    <CreateGroup />
                     <ListUserOnline />
                     <ListChat />
-                    <div className="App" style={{ height: '500px', marginTop: '50px', display: 'flex', justifyContent: 'center' }} >
+                    <div className="App" style={{ height: '500px', marginTop: '30px', display: 'flex', justifyContent: 'center' }} >
                         <Chat />
                     </div>
                     <VideoCall />

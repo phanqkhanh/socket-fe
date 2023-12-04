@@ -38,6 +38,8 @@ function Chat() {
                 to: chatActive.to,
                 chatId: chatActive._id
             }
+            clearTimeout(typingTimeoutRef.current);
+            socketRef.current?.emit('stop-typing', { to: chatActive.to });
             const newListMessage = [...messages]
 
             socketRef.current.emit('send-message', dataSend, (error, responseSuccess) => {

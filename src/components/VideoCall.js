@@ -17,10 +17,20 @@ export default function VideoCall() {
         const config = { audio: true, video: openVideo };
         return navigator.mediaDevices.getUserMedia(config)
     }
-    const playStream = (videoRef, stream) => {
+    const playStream = async (videoRef, stream) => {
         try {
             videoRef.current.srcObject = stream
-            videoRef.current?.play()
+            if (typeof videoRef.current.play === 'function') {
+                videoRef.current?.play().then(() => {
+                    // Playing successfully
+                    console.log('Video is playing');
+                }).catch((error) => {
+                    // Handle play error
+                    console.error('Error playing video:', error);
+                });
+            } else {
+                console.error('play() method is not supported on the video element.');
+            }
         } catch (error) {
             console.log(error);
         }
@@ -37,8 +47,8 @@ export default function VideoCall() {
                 return
             }
             const id = response.peerId //id peer của người muốn gọi
-            openStream(video).then(stream => {
-                playStream(localVideoRef, stream)
+            openStream(video).then(async stream => {
+                await playStream(localVideoRef, stream)
                 const call = peer.call(id, stream)
                 call.on('stream', remoteStream => playStream(remoteVideoRef, remoteStream))
             }).catch(err => console)
@@ -84,11 +94,9 @@ export default function VideoCall() {
         });
 
         peer.on('call', call => {
-            console.log('received call')
             openStream(true).then(stream => {
-                console.log('received stream', stream)
                 call.answer(stream)
-                // playStream(localVideoRef, stream)
+                playStream(localVideoRef, stream)
                 call.on('stream', remoteStream => playStream(remoteVideoRef, remoteStream))
 
             }).catch(err => console)
