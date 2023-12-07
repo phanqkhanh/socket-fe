@@ -12,9 +12,10 @@ const peer = new Peer();
 export default function VideoCall() {
     const { localVideoRef, remoteVideoRef, setCall, call, socketRef, handleShowAlert, chatActive, user } = useContext(AppContext);
     const [showDialog, setShowDialog] = useState(false)
+    const [isCalling, setIsCalling] = useState(false)
 
-    const openStream = (openVideo = false) => {
-        const config = { audio: true, video: openVideo };
+    const openStream = (video = false, audio = false) => {
+        const config = { audio: audio, video: video };
         return navigator.mediaDevices.getUserMedia(config)
     }
     const playStream = async (videoRef, stream) => {
@@ -23,7 +24,7 @@ export default function VideoCall() {
             if (typeof videoRef.current.play === 'function') {
                 videoRef.current?.play().then(() => {
                     // Playing successfully
-                    console.log('Video is playing');
+                    // console.log('Video is playing');
                 }).catch((error) => {
                     // Handle play error
                     console.error('Error playing video:', error);
@@ -47,7 +48,7 @@ export default function VideoCall() {
                 return
             }
             const id = response.peerId //id peer của người muốn gọi
-            openStream(video).then(async stream => {
+            openStream(video, audio).then(async stream => {
                 await playStream(localVideoRef, stream)
                 const call = peer.call(id, stream)
                 call.on('stream', remoteStream => playStream(remoteVideoRef, remoteStream))
@@ -56,32 +57,29 @@ export default function VideoCall() {
 
     }
     const endCall = () => {
+        setIsCalling(false)
         const localVideo = localVideoRef.current;
         if (localVideo) {
-            localVideo.srcObject = null;
+            localVideo.srcObject?.getTracks().forEach(track => track.stop());
         }
-
-        // Tắt video trên remote video (nếu có)
+        localVideo.srcObject = null
         const remoteVideo = remoteVideoRef.current;
         if (remoteVideo) {
-            remoteVideo.srcObject = null;
+            remoteVideo.srcObject?.getTracks().forEach(track => track.stop());
         }
-    }
+        remoteVideo.srcObject = null
+        setCall((prevState) => ({ ...prevState, isCall: false, video: true, audio: true }));
+        // Gọi hàm để thông báo cho đối tác rằng cuộc gọi đã kết thúc
+        // Ví dụ: socketRef.current?.emit('end-call', { to: chatActive.to });
+    };
 
-    useEffect(() => {
-        if (call.isCall) {
-            onCall(call.video)
-            // openStream(true)
-        } else {
-            endCall()
-        }
-    }, [call.isCall])
 
     useEffect(() => {
         if (call.isCall) {
             onCall(call.video, call.audio)
+            setIsCalling(true);
         }
-    }, [call.video, call.audio])
+    }, [call.isCall])
 
     useEffect(() => {
         peer.on("open", (id) => {
@@ -98,7 +96,7 @@ export default function VideoCall() {
                 call.answer(stream)
                 playStream(localVideoRef, stream)
                 call.on('stream', remoteStream => playStream(remoteVideoRef, remoteStream))
-
+                setIsCalling(true);
             }).catch(err => console)
         })
 
@@ -111,7 +109,21 @@ export default function VideoCall() {
         setCall((prevState) => ({ ...prevState, [key]: !prevState[key] }))
     }
 
-    // console.log(localVideoRef)
+    const toggleCamera = () => {
+        const tracks = localVideoRef.current.srcObject.getVideoTracks();
+        tracks.forEach(track => {
+            track.enabled = !call.video;
+        });
+        onRemoteStream('video')
+    };
+
+    const toggleMicrophone = () => {
+        const tracks = localVideoRef.current.srcObject.getAudioTracks();
+        tracks.forEach(track => {
+            track.enabled = !call.audio;
+        });
+        onRemoteStream('audio')
+    };
 
     return (
         <>
@@ -142,26 +154,25 @@ export default function VideoCall() {
                                 K
                             </Avatar>
                     } */}
-                    <video className='video-call-item' ref={localVideoRef} />
-                    <video className='video-call-item' ref={remoteVideoRef} />
+                    <video className='video-call-item' ref={localVideoRef} autoPlay />
+                    <video className='video-call-item' ref={remoteVideoRef} autoPlay />
                 </div>
             </div>
             {
-                call.isCall &&
+                isCalling &&
                 <div style={{ display: 'flex', justifyContent: 'center', margin: '15px 0' }}>
                     <div
                         onClick={() => {
-                            setShowDialog(false)
-                            onRemoteStream('isCall')
+                            endCall()
                         }}
                         style={{ backgroundColor: '#ea0000', marginRight: '10px' }} className='icon-dialog-call'>
                         <ImPhoneHangUp size={30} color='#fff' />
                     </div>
-                    <div onClick={() => onRemoteStream('audio')} style={{ backgroundColor: '#443e3e', marginRight: '10px' }} className='icon-dialog-call'>
+                    <div onClick={toggleMicrophone} style={{ backgroundColor: '#443e3e', marginRight: '10px' }} className='icon-dialog-call'>
                         {call.audio ? <FaMicrophone color='#fff' size={30} /> : <FaMicrophoneSlash color='#fff' size={30} />}
                     </div>
-                    <div onClick={() => onRemoteStream('video')} className='icon-dialog-call' style={{ backgroundColor: '#443e3e' }}>
-                        {call.video ? <FaVideo color='#fff' size={30} onClick={() => setCall((prevState) => ({ ...prevState, video: true, isCall: true }))} />
+                    <div onClick={toggleCamera} className='icon-dialog-call' style={{ backgroundColor: '#443e3e' }}>
+                        {call.video ? <FaVideo color='#fff' size={30} />
                             :
                             <FaVideoSlash color='#fff' size={30} />}
                     </div>

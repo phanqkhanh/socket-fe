@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import { Alert } from '@mui/material';
 import { useContext } from 'react';
+import Room from './pages/Room';
 
 function App() {
   const { showAlert } = useContext(AppContext);
@@ -13,6 +14,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route index path="/" element={<Home />} />
+          <Route path="room/:roomId" element={<Room />} />
           <Route path="login" element={<Login />} />
         </Routes>
       </BrowserRouter>

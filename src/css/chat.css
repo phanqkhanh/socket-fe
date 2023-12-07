@@ -4,3 +4,8 @@
     text-align: end;
     color: #565656;
 }
+.css-et1ao3-MuiTypography-root {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}

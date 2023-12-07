@@ -10,7 +10,7 @@ import '../css/chat.css';
 
 function Chat() {
     const { localVideoRef, remoteVideoRef, user, socketRef, chatActive, handleShowAlert,
-        setChatActive, setListChat, listChat, listChatRef, setCall, call
+        setChatActive, setListChat, listChat, listChatRef, setCall, call, setUserOnlineSelect
     } = useContext(AppContext);
     const [value, setValue] = useState('')
     const [messages, setMessages] = useState([])
@@ -32,7 +32,7 @@ function Chat() {
     const handleSubmit = (e) => {
         e.preventDefault();
         setIsFetchingOldMessage(false)
-        if (chatActive.to) {
+        if (chatActive.to || chatActive._id) {
             const dataSend = {
                 content: value,
                 to: chatActive.to,
@@ -54,14 +54,14 @@ function Chat() {
                     //cập nhật lại latestMessage của list chat
                     const { message, chat } = responseSuccess
                     const newListChat = listChat.filter(item => item._id !== chat._id)
-                    newListChat.unshift({ ...chat, latestMessage: message })
+                    newListChat.unshift(chat)
                     setListChat(newListChat)
                     const length = messages.length
                     newListMessage.push(message)
                     setMessages(newListMessage)
                 }
             })
-            setMessages((prevState) => [...prevState, { _id: Date.now(), content: value, sender: user._id, isSending: true }])
+            setMessages((prevState) => [...prevState, { _id: Date.now(), content: value, sender: { _id: user._id }, isSending: true }])
             setValue('')
         }
     }
@@ -81,8 +81,25 @@ function Chat() {
             typingTimeoutRef.current = null;
         }, 2000);
     }
-    const isMyMessage = (id) => {
-        return id == user._id
+    const isMyMessage = (sender) => {
+        return sender?._id == user._id
+    }
+    const renderStatusMessage = (message) => {
+        const myMessage = isMyMessage(messages[messages.length - 1]?.sender)
+        if (!myMessage) return null
+
+        const isError = message.isError || false
+        const isSending = message.isSending || false
+        if (isSending) {
+            return <p className='sending'>Đang gửi...</p>
+        } else {
+            return isError ? <p style={{ color: 'red' }} className='sending'>Lỗi!</p> : <p className='sending'>Đã gửi</p>
+        }
+        // isMyMessage(messages[messages.length - 1]?.sender) ?
+        //                         (messages[messages.length - 1]?.isSending ?
+        //                             <p className='sending'>Đang gửi...</p> :
+        //                             <p className='sending'>Đã gửi</p>)
+        //                         : null
     }
 
     useEffect(() => {
@@ -137,8 +154,12 @@ function Chat() {
             params: { ...params, limit: limit }
         })
     }
+
     useEffect(() => {
         chatActiveRef.current = chatActive
+        setMessages([])
+        setUserOnlineSelect(null)
+        setIsFetchingOldMessage(false)
         //call api get chat messages
         if (chatActive?._id) {
             //get messages
@@ -157,11 +178,12 @@ function Chat() {
     useEffect(() => {
         const handleScroll = () => {
             // Kiểm tra xem có đang scroll lên không
-            if (chatContainerRef.current?.scrollTop === 0) {
+            if (chatContainerRef.current?.scrollTop === 0 && isFetchingOldMessage) {
                 // Gọi API để lấy tin nhắn trước đó ở đây
                 const nextId = nextMessageRef.current?._id
                 setIsFetchingOldMessage(true)
-                fetchMessages({ chatId: chatActive._id, next: nextId }).then((response) => {
+                if (!chatActiveRef.current._id) return
+                fetchMessages({ chatId: chatActiveRef.current._id, next: nextId }).then((response) => {
                     if (response.data.data) {
                         const data = response.data.data?.reverse()
                         setMessages((prevState) => ([...data, ...prevState]))
@@ -194,22 +216,24 @@ function Chat() {
                             <p className='title-user-item' style={{ marginLeft: '10px', color: '#fff' }}>{chatActive?.name}</p>
                         </div>
                         <div className='icon-chat-header'>
-                            <IoCall size={30} color='#fff' style={{ marginRight: '10px' }} onClick={() => setCall((prevState) => ({ ...prevState, isCall: true, video: false }))} />
+                            {/* <IoCall size={30} color='#fff' style={{ marginRight: '10px' }} onClick={() => setCall((prevState) => ({ ...prevState, isCall: true, video: false }))} /> */}
                             <FaVideo color='#fff' size={30} onClick={() => setCall((prevState) => ({ ...prevState, video: true, isCall: true }))} />
                         </div>
                     </div>
                     <div ref={chatContainerRef} className='chat' style={{ overflowY: 'scroll', overflowX: 'hidden' }}>
                         {messages.map((message, index) =>
-                            <div key={message?._id} className='wrap-message' style={{ justifyContent: isMyMessage(message.sender) ? 'flex-end' : 'flex-start' }}>
+                            <div key={message?._id} className='wrap-message' style={{ justifyContent: isMyMessage(message.sender) ? 'flex-end' : 'flex-start', alignItems: 'center' }}>
+                                {!isMyMessage(message.sender) &&
+                                    <Avatar
+                                        alt={`avatar`}
+                                        src={message?.sender.avatarUrl}
+                                        sx={{ width: 20, height: 20, marginRight: '5px' }}
+                                    />}
                                 <div style={{ justifyContent: isMyMessage(message.sender) ? 'flex-end' : 'flex-start', backgroundColor: isMyMessage(message.sender) ? 'rgb(0, 132, 255)' : '#303030' }} className='message' key={index}>{message.content}</div>
                             </div>
                         )}
                         {
-                            isMyMessage(messages[messages.length - 1]?.sender) ?
-                                messages[messages.length - 1]?.isSending ?
-                                    <p className='sending'>Đang gửi...</p> :
-                                    <p className='sending'>Đã gửi</p>
-                                : null
+                            renderStatusMessage(messages[messages.length - 1])
                         }
                         {showTyping && <Typing />}
                     </div>

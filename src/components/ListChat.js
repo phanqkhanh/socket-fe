@@ -2,7 +2,7 @@ import { Avatar, List, ListItem, ListItemAvatar, ListItemButton, ListItemText } 
 import React, { useContext, useEffect, useState } from 'react'
 import { axiosInstance } from '../configs/configUrl';
 import { AppContext } from '../contexts/context';
-import { getFullNameUser } from '../utils';
+import { getFullNameUser, isObjectEmpty } from '../utils';
 import moment from 'moment/moment';
 
 moment.locale('vi')
@@ -34,7 +34,10 @@ function ListChat() {
         listChatRef.current = listChat
     }, [listChat])
 
-    const isSeenChat = (data) => {
+    const isSeenChat = (data = null) => {
+        if (data == null || isObjectEmpty(data)) {
+            return true
+        }
         if (data.sender === user._id) {
             return true
         }
@@ -43,7 +46,6 @@ function ListChat() {
     }
 
     const onClickChatItem = (value, index) => {
-        console.log(value)
         let data = {}
         if (value.isGroup) {
             data = {
@@ -62,8 +64,9 @@ function ListChat() {
         }
 
         setChatActive(data)
+        if (value.latestMessage?.readBy.includes(user._id) || value.latestMessage.sender === user._id) return
         const latestMessage = { ...value.latestMessage }
-        latestMessage.readBy.push(user._id)
+        latestMessage?.readBy?.push(user._id)
         const newListChat = [...listChat]
         newListChat[index] = { ...value, latestMessage: latestMessage }
         setListChat(newListChat)
@@ -76,6 +79,19 @@ function ListChat() {
             const msg = error.response?.data?.message || error.message || 'Lỗi'
             handleShowAlert('error', msg)
         })
+    }
+
+    const getNameChatGroup = (chat) => {
+        if (chat.name) {
+            return chat.name
+        }
+        let result = ''
+        const length = chat?.users.length
+        for (let index = 0; index < chat?.users.length; index++) {
+            const user = chat.users[index];
+            result += user.firstName + (length === (index + 1) ? '' : ', ')
+        }
+        return result
     }
 
     // console.log(listChat)
@@ -103,7 +119,7 @@ function ListChat() {
                                     {/* <div className='icon-online'></div> */}
                                 </ListItemAvatar>
                                 <div style={{ maxWidth: '140px' }}>
-                                    <ListItemText className='title-user-item' primary={getInfoUserReceive(value.users, 'firstName')} />
+                                    <ListItemText className='title-user-item' primary={value?.isGroup ? getNameChatGroup(value) : getInfoUserReceive(value.users, 'firstName')} />
                                     <p style={{ fontWeight: isSeenChat(value.latestMessage) ? 'normal' : 'bold' }} className='latest-message'>{value.latestMessage?.content}</p>
                                 </div>
                             </ListItemButton>

@@ -48,6 +48,7 @@ function ListUserOnline() {
             const userId = userOnlineSelect._id
             axiosInstance.get(`/chat/${userId}`)
                 .then((response) => {
+                    console.log(response.data)
                     if (response.data.data) {
                         const chat = response.data.data
                         const userReceive = chat.users.find(item => item._id !== user._id)
@@ -76,7 +77,7 @@ function ListUserOnline() {
 
     return (
         <div style={{ position: 'absolute', right: '50px' }}>
-            <h3 style={{ margin: '0' }}>Có {listUserOnline.length} người dùng đang online</h3>
+            <h3 style={{ margin: '0' }}>Danh sách người dùng đang online</h3>
             <List dense sx={{ width: '100%', maxWidth: 360 }}>
                 {listUserOnline.map((value) => {
                     return (
