@@ -112,9 +112,18 @@ export default function VideoCall() {
     const toggleCamera = () => {
         const tracks = localVideoRef.current.srcObject.getVideoTracks();
         tracks.forEach(track => {
-            track.enabled = !call.video;
+            track.enabled = !call.video;  //false
         });
         onRemoteStream('video')
+
+        const localVideo = localVideoRef.current;
+        if (localVideo) {
+            localVideo.srcObject?.getTracks().forEach(track => track.stop());
+        }
+        const remoteVideo = remoteVideoRef.current;
+        if (remoteVideo) {
+            remoteVideo.srcObject?.getTracks().forEach(track => track.stop());
+        }
     };
 
     const toggleMicrophone = () => {
